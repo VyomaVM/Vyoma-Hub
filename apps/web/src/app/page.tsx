@@ -7,6 +7,7 @@ import { ApplianceModal } from "@/components/ApplianceModal";
 import { KernelExplorer } from "@/components/KernelExplorer";
 import { SecurityNotaryTab } from "@/components/SecurityNotaryTab";
 import { TokensManager } from "@/components/TokensManager";
+import { OrganizationsTab } from "@/components/OrganizationsTab";
 import { CatalogItem, KernelProfile } from "@/types/hub";
 import {
   getCatalog,
@@ -223,7 +224,10 @@ export default function Home() {
         {/* TAB 3: SECURITY & NOTARY */}
         {activeTab === "notary" && <SecurityNotaryTab />}
 
-        {/* TAB 4: TOKENS & CLI ACCESS */}
+        {/* TAB 4: ENTERPRISE ORGANIZATIONS & RBAC */}
+        {activeTab === "orgs" && <OrganizationsTab />}
+
+        {/* TAB 5: TOKENS & CLI ACCESS */}
         {activeTab === "tokens" && <TokensManager />}
       </main>
 
