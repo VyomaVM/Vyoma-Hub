@@ -7,9 +7,10 @@ import {
   Layers,
   Key,
   Search,
+  Building2,
 } from "lucide-react";
 
-export type HubTab = "store" | "kernels" | "notary" | "tokens";
+export type HubTab = "store" | "kernels" | "notary" | "orgs" | "tokens";
 
 interface NavbarProps {
   activeTab: HubTab;
@@ -172,6 +173,26 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <ShieldCheck size={16} color={activeTab === "notary" ? "var(--accent-emerald)" : "currentColor"} />
             Security & Notary
+          </button>
+
+          <button
+            onClick={() => onSelectTab("orgs")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "8px 14px",
+              borderRadius: "var(--radius-md)",
+              fontSize: "0.88rem",
+              fontWeight: 500,
+              color: activeTab === "orgs" ? "#ffffff" : "var(--text-secondary)",
+              background: activeTab === "orgs" ? "rgba(0, 242, 254, 0.12)" : "transparent",
+              border: `1px solid ${activeTab === "orgs" ? "rgba(0, 242, 254, 0.3)" : "transparent"}`,
+              transition: "all 0.2s ease",
+            }}
+          >
+            <Building2 size={16} color={activeTab === "orgs" ? "var(--accent-cyan)" : "currentColor"} />
+            Organizations
           </button>
 
           <button

@@ -65,3 +65,41 @@ export interface TransparencyLogData {
   total_entries: number;
   entries: TransparencyLogItem[];
 }
+
+export interface Organization {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  is_verified: boolean;
+  avatar_url: string | null;
+  role?: string | null;
+  created_at: string;
+}
+
+export interface OrgMember {
+  user_id: string;
+  username: string;
+  full_name: string | null;
+  role: "owner" | "admin" | "member" | "viewer" | string;
+  joined_at: string;
+}
+
+export interface Webhook {
+  id: string;
+  org_id: string;
+  url: string;
+  events: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_type: string;
+  status_code: number | null;
+  request_payload: Record<string, unknown>;
+  response_body: string | null;
+  delivered_at: string;
+}
