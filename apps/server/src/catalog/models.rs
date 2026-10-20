@@ -57,3 +57,48 @@ pub struct CatalogQuery {
     pub page: Option<i64>,
     pub limit: Option<i64>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VmifHardware {
+    pub vcpu: i32,
+    pub memory_mb: i32,
+    pub disk_gb: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VmifManifest {
+    pub schema_version: u32,
+    pub appliance: String,
+    pub version: String,
+    pub recommended_kernel: String,
+    pub boot_args: String,
+    pub hardware: VmifHardware,
+    pub rootfs_digest: String,
+    pub signature: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UploadApplianceRequest {
+    pub namespace: String,
+    pub name: String,
+    pub tag: Option<String>,
+    pub description: Option<String>,
+    pub recommended_kernel: Option<String>,
+    pub boot_args: Option<String>,
+    pub vcpu: Option<i32>,
+    pub memory_mb: Option<i32>,
+    pub disk_gb: Option<i32>,
+    pub rootfs_base64: Option<String>,
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UploadApplianceResponse {
+    pub status: String,
+    pub repository: String,
+    pub tag: String,
+    pub digest: String,
+    pub manifest: VmifManifest,
+}
+

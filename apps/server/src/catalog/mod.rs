@@ -2,7 +2,10 @@ pub mod handlers;
 pub mod models;
 
 use crate::state::AppState;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 pub fn catalog_routes() -> Router<AppState> {
     Router::new()
@@ -12,6 +15,10 @@ pub fn catalog_routes() -> Router<AppState> {
         // Certified Kernel Catalog
         .route("/api/v1/kernels", get(handlers::list_kernels))
         .route("/api/v1/kernels/:name/:version", get(handlers::get_kernel))
+        // Native VMIF Appliance Engine (Section 3.1)
+        .route("/v2/vyoma/appliances/:name/manifest", get(handlers::get_vmif_manifest))
+        .route("/v2/vyoma/kernels/:profile/:version", get(handlers::get_vmif_kernel))
+        .route("/api/v1/appliances/upload", post(handlers::upload_appliance))
 }
 
 #[cfg(test)]
