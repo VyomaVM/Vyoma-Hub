@@ -2,7 +2,7 @@ pub mod auth;
 pub mod health;
 pub mod oci_auth;
 
-use crate::state::AppState;
+use crate::{registry::registry_routes, state::AppState};
 use axum::{
     routing::{delete, get, post},
     Router,
@@ -21,6 +21,8 @@ pub fn build_router(state: AppState) -> Router {
             axum::http::HeaderName::from_static("docker-distribution-api-version"),
             axum::http::HeaderName::from_static("docker-content-digest"),
             axum::http::HeaderName::from_static("location"),
+            axum::http::HeaderName::from_static("range"),
+            axum::http::HeaderName::from_static("docker-upload-uuid"),
         ]);
 
     Router::new()
@@ -29,6 +31,8 @@ pub fn build_router(state: AppState) -> Router {
         // OCI Registry v2 Handshake & Token Endpoints
         .route("/v2/", get(oci_auth::oci_ping))
         .route("/v2/token", get(oci_auth::oci_token))
+        // Merge full OCI Distribution Registry routes (/v2/:namespace/:name/...)
+        .merge(registry_routes(state.clone()))
         // Hub REST API v1: Auth & User Tokens
         .route("/api/v1/auth/register", post(auth::register))
         .route("/api/v1/auth/login", post(auth::login))
