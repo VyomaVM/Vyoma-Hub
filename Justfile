@@ -1,4 +1,5 @@
 set dotenv-load := true
+export PATH := env_var('HOME') + "/.cargo/bin:" + env_var('HOME') + "/.nvm/versions/node/v22.20.0/bin:" + env_var('PATH')
 
 # Default: List all available recipes
 default:
@@ -32,15 +33,11 @@ clean: down
 
 # Run pending database migrations
 migrate:
-    cd apps/server && cargo sqlx migrate run
-
-# Revert the latest database migration
-migrate-revert:
-    cd apps/server && cargo sqlx migrate revert
+    cargo run --bin vyoma-hub-server -- --migrate-only
 
 # Seed database with sample verified publishers, appliances, and kernels
 seed:
-    cd apps/server && cargo run --bin vyoma-hub-seed
+    cargo run --bin vyoma-hub-seed
 
 # -------------------------------------------------------------
 # 🚀 Development & Live Reload
@@ -54,7 +51,7 @@ dev: up
 
 # Run only backend with hot reload (cargo watch)
 dev-server: up
-    cd apps/server && cargo watch -x 'run --bin vyoma-hub-server'
+    cargo watch -x 'run --bin vyoma-hub-server'
 
 # Run only frontend (Next.js)
 dev-web:
