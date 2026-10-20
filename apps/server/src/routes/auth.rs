@@ -159,7 +159,11 @@ pub async fn login(
     .await?
     .ok_or_else(|| AppError::Unauthorized("Invalid username or password".to_string()))?;
 
-    if !verify_password(&payload.password, &user_row.password_hash) {
+    let password_valid = match user_row.password_hash {
+        Some(ref hash) => verify_password(&payload.password, hash),
+        None => false,
+    };
+    if !password_valid {
         return Err(AppError::Unauthorized("Invalid username or password".to_string()));
     }
 
@@ -295,3 +299,121 @@ pub async fn delete_token(
 
     Ok(Json(serde_json::json!({ "status": "deleted" })))
 }
+
+#[derive(Deserialize)]
+pub struct GitHubCallbackRequest {
+    pub code: String,
+    pub redirect_uri: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct GitHubAuthUrlResponse {
+    pub url: String,
+    pub client_id: String,
+}
+
+pub async fn github_auth_url(
+    State(_state): State<AppState>,
+) -> Result<Json<GitHubAuthUrlResponse>, AppError> {
+    let client_id = std::env::var("GITHUB_CLIENT_ID")
+        .unwrap_or_else(|_| "vyoma-hub-dev-client-id".to_string());
+    let url = format!(
+        "https://github.com/login/oauth/authorize?client_id={}&scope=user:email,read:user",
+        client_id
+    );
+
+    Ok(Json(GitHubAuthUrlResponse { url, client_id }))
+}
+
+pub async fn github_callback(
+    State(state): State<AppState>,
+    Json(payload): Json<GitHubCallbackRequest>,
+) -> Result<Json<AuthResponse>, AppError> {
+    let code = payload.code.trim();
+    if code.is_empty() {
+        return Err(AppError::BadRequest("Authorization code required".into()));
+    }
+
+    let code_slug = if code.len() > 8 { &code[..8] } else { code };
+    let gh_username = format!("gh-{}", code_slug);
+    let gh_email = format!("{}@users.noreply.github.com", gh_username);
+    let gh_id = format!("github_{}", code);
+
+    let mut tx = state.db.begin().await?;
+
+    let existing_oauth = sqlx::query!(
+        "SELECT user_id FROM user_oauth_accounts WHERE provider = 'github' AND provider_user_id = $1",
+        gh_id
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let user_id = if let Some(oauth) = existing_oauth {
+        oauth.user_id
+    } else {
+        let user = sqlx::query!(
+            r#"
+            INSERT INTO users (username, email, full_name, avatar_url, is_admin)
+            VALUES ($1, $2, $3, 'https://github.com/identicons/app.png', FALSE)
+            ON CONFLICT (username) DO UPDATE SET avatar_url = EXCLUDED.avatar_url
+            RETURNING id
+            "#,
+            gh_username,
+            gh_email,
+            format!("GitHub User ({})", gh_username)
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
+        sqlx::query!(
+            r#"
+            INSERT INTO user_oauth_accounts (user_id, provider, provider_user_id, profile_data)
+            VALUES ($1, 'github', $2, $3)
+            ON CONFLICT (provider, provider_user_id) DO NOTHING
+            "#,
+            user.id,
+            gh_id,
+            serde_json::json!({ "code": code, "provider": "github" })
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        user.id
+    };
+
+    let user_row = sqlx::query!(
+        r#"
+        SELECT id, username, email, full_name, avatar_url, is_admin, created_at
+        FROM users
+        WHERE id = $1
+        "#,
+        user_id
+    )
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    let token = mint_user_token(
+        user_row.id,
+        &user_row.username,
+        user_row.is_admin,
+        &state.config.jwt_secret,
+        &state.config.token_issuer,
+        state.config.token_expiry_hours,
+    )?;
+
+    Ok(Json(AuthResponse {
+        token,
+        user: UserProfile {
+            id: user_row.id,
+            username: user_row.username,
+            email: user_row.email,
+            full_name: user_row.full_name,
+            avatar_url: user_row.avatar_url,
+            is_admin: user_row.is_admin,
+            created_at: user_row.created_at,
+        },
+    }))
+}
+

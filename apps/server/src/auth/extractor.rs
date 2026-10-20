@@ -160,12 +160,14 @@ async fn resolve_auth(parts: &Parts, state: &AppState) -> Result<Option<AuthUser
                     .await?;
 
                     if let Some(user) = user_row {
-                        if verify_password(secret, &user.password_hash) {
-                            return Ok(Some(AuthUser {
-                                id: user.id,
-                                username: user.username,
-                                is_admin: user.is_admin,
-                            }));
+                        if let Some(ref hash) = user.password_hash {
+                            if verify_password(secret, hash) {
+                                return Ok(Some(AuthUser {
+                                    id: user.id,
+                                    username: user.username,
+                                    is_admin: user.is_admin,
+                                }));
+                            }
                         }
                     }
                 }

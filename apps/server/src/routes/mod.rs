@@ -48,6 +48,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/auth/me", get(auth::me))
         .route("/api/v1/auth/tokens", post(auth::create_token).get(auth::list_tokens))
         .route("/api/v1/auth/tokens/:id", delete(auth::delete_token))
+        .route("/api/v1/auth/oauth/github/url", get(auth::github_auth_url))
+        .route("/api/v1/auth/oauth/github/callback", post(auth::github_callback))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
