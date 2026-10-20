@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Vyoma Hub Team <engineering@vyoma.dev>"]
+repository = "https://github.com/VyomaVM/Vyoma-Hub"
+
+[workspace.dependencies]
+# Web framework & async
+axum = { version = "0.7", features = ["macros", "multipart"] }
+tokio = { version = "1.38", features = ["full"] }
+tower = { version = "0.4", features = ["util"] }
+tower-http = { version = "0.5", features = ["trace", "cors", "compression-full", "timeout"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Tracing & Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Database & Cache
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid", "json", "migrate"] }
+redis = { version = "0.26", features = ["tokio-comp", "connection-manager", "aio"] }
+
+# Object Storage / AWS SDK
+aws-config = { version = "1.5", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1.45"
+aws-credential-types = "1.2"
+
+# Security & Crypto
+jsonwebtoken = "9.3"
+argon2 = { version = "0.5", features = ["std"] }
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+subtle = "2.5"
+
+# Utils
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.9", features = ["v4", "serde"] }
+thiserror = "1.0"
+anyhow = "1.0"
+dotenvy = "0.15"
+futures-util = "0.3"
+bytes = "1.6"
+regex = "1.10"
