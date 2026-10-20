@@ -1,0 +1,24 @@
+{
+  "name": "vyoma-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vyoma Hub — Official App Store & Registry for Hardware-Isolated Micro-OS Appliances and Certified Kernels",
+  "scripts": {
+    "dev": "just dev",
+    "dev:web": "just dev-web",
+    "dev:server": "just dev-server",
+    "build": "just build",
+    "check": "just check",
+    "test": "just test",
+    "up": "just up",
+    "down": "just down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=18.17.0",
+    "pnpm": ">=9.0.0"
+  }
+}

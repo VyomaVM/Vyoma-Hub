@@ -20,7 +20,8 @@ Complete technical blueprints and design documents:
 |---|---|---|
 | **Backend API & Registry** | **Rust 1.80+** | `axum` 0.7, `tokio`, `sqlx`, `tower-http`. Direct code sharing with `crates/vyoma-image` (reusing `VmifManifest`, `KernelCatalog`, `SigningKeyPair`, `TrustPolicy`). |
 | **Frontend Web App** | **Next.js 15 (React 19)** | TypeScript, App Router, SSR for appliance SEO, Vanilla CSS / CSS Modules. |
-| **Monorepo Manager** | **`pnpm` Workspaces (v9+)** | Turborepo (`turbo.json`) task orchestration and dependency isolation. |
+| **Master Task Runner** | **`just` (`Justfile`)** | Modern Rust/systems command runner unifying Docker, Cargo, and pnpm (`just dev`, `just check`). |
+| **Frontend Package Manager** | **`pnpm` Workspaces (v9+)** | Strict dependency isolation for `apps/web` and `packages/shared`. Replaces Turborepo bloat. |
 | **Primary Database** | **PostgreSQL 16** | Relational ACID guarantees for orgs/users/repos, JSONB storage for manifests. |
 | **Cache & Queues** | **Redis 7** | Token rate limiting, session cache, async task queuing. |
 | **Blob Storage** | **S3-Compatible** | Cloudflare R2 in production (zero egress fees), MinIO locally. |
@@ -44,7 +45,7 @@ Vyoma-Hub/
 ├── docs/                 # Architectural specifications and API documentation
 ├── pnpm-workspace.yaml   # pnpm workspace definition
 ├── package.json          # Monorepo root scripts
-├── turbo.json            # Turborepo task pipeline
+├── Justfile              # Master command runner recipes (just dev, just check)
 └── README.md
 ```
 

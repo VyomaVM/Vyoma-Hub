@@ -159,7 +159,8 @@ The technology stack is officially ratified to maximize performance, type safety
 | **Backend API & Registry** | **Rust 1.80+ (`axum` + `tokio` + `sqlx`)** | Extreme throughput for streaming multi-gigabyte layer blobs. **Direct code sharing** with `crates/vyoma-image` (reusing `VmifManifest`, `KernelCatalog`, `SigningKeyPair`, and `TrustPolicy` without duplicate logic). |
 | **Frontend Web App** | **Next.js 15 (React 19, TypeScript)** | Server-side rendering (SSR) for appliance SEO (`hub.vyoma.dev/postgres`), client-side transitions for the Explorer, Dashboard, and Kernel Browser. |
 | **Styling** | **Vanilla CSS / CSS Modules** | Zero bloated runtime; consistent with Vyoma's sleek dark-mode aesthetic (gold/cyan neon accents, monospace metrics). |
-| **Monorepo Manager** | **`pnpm` Workspaces (v9+) + Turborepo** | Blazing-fast disk-efficient package management with isolated dependency hoisting and task orchestration (`turbo build`, `turbo dev`). |
+| **Master Task Runner** | **`just` (`Justfile`)** | The modern Rust/systems standard command runner. Unifies Docker, Cargo, and pnpm into clean, self-documenting recipes (`just dev`, `just check`, `just build`) with zero runtime overhead. |
+| **Frontend Package Manager** | **`pnpm` Workspaces (v9+)** | Fast, disk-efficient dependency isolation for `apps/web` and `packages/shared`. Completely eliminates Turborepo bloat. |
 | **Primary Database** | **PostgreSQL 16** | Relational ACID guarantees for organizations, users, repositories, tags, and JSONB storage for appliance manifests and audit logs. |
 | **Cache & Rate Limiting** | **Redis 7** | Sub-millisecond token blacklisting, session tracking, token bucket rate limiting (preventing registry DDoS), and async task queuing. |
 | **Blob Object Storage** | **S3-Compatible (Cloudflare R2 in Prod, MinIO locally)** | Content-addressed storage for `rootfs.sqfs` layers and `kernel.vmlinuz` binaries. Zero egress fees on Cloudflare R2. |
