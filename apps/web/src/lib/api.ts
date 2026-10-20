@@ -8,7 +8,7 @@ import {
   WebhookDelivery,
 } from "@/types/hub";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 export const FALLBACK_KERNELS: KernelProfile[] = [
   {
