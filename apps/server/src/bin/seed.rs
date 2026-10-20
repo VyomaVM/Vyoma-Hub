@@ -1,3 +1,4 @@
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
 use ed25519_dalek::{Signer, SigningKey};
 use rand::rngs::OsRng;
 use serde_json::json;
@@ -26,17 +27,87 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("🔑 Official Notary Ed25519 Public Key: {}", notary_pubkey);
 
     // 2. Seed Official Organization
-    sqlx::query!(
+    let vyoma_org = sqlx::query!(
         r#"
         INSERT INTO organizations (name, display_name, description, is_verified)
         VALUES ('vyoma', 'Vyoma Official', 'Official hardware-isolated micro-OS appliances and certified kernels built by the Vyoma Core Team', TRUE)
         ON CONFLICT (name) DO UPDATE SET
             display_name = EXCLUDED.display_name,
             is_verified = TRUE
+        RETURNING id
         "#
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    // 2b. Seed Admin User & Org Membership
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    let password_hash = argon2
+        .hash_password(b"vyomapassword123", &salt)
+        .expect("Failed to hash admin password")
+        .to_string();
+
+    let admin_user = sqlx::query!(
+        r#"
+        INSERT INTO users (username, email, password_hash, full_name, is_admin)
+        VALUES ('admin', 'admin@vyoma.dev', $1, 'Vyoma Administrator', TRUE)
+        ON CONFLICT (username) DO UPDATE SET is_admin = TRUE
+        RETURNING id
+        "#,
+        password_hash
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO org_members (org_id, user_id, role)
+        VALUES ($1, $2, 'owner')
+        ON CONFLICT (org_id, user_id) DO UPDATE SET role = 'owner'
+        "#,
+        vyoma_org.id,
+        admin_user.id
     )
     .execute(&pool)
     .await?;
+
+    // 2c. Seed sample webhook & delivery
+    let existing_hook = sqlx::query!("SELECT id FROM webhooks WHERE org_id = $1 LIMIT 1", vyoma_org.id)
+        .fetch_optional(&pool)
+        .await?;
+
+    if existing_hook.is_none() {
+        let inserted = sqlx::query!(
+            r#"
+            INSERT INTO webhooks (org_id, url, secret, events, is_active)
+            VALUES ($1, 'https://hooks.vyoma.dev/events', 'whsec_sample_secret_key_vyoma_2026', '{"push", "release", "scan"}', TRUE)
+            RETURNING id
+            "#,
+            vyoma_org.id
+        )
+        .fetch_one(&pool)
+        .await?;
+
+        let payload = json!({
+            "event": "ping",
+            "org": "vyoma",
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "status": "active"
+        });
+
+        sqlx::query!(
+            r#"
+            INSERT INTO webhook_deliveries (webhook_id, event_type, status_code, request_payload, response_body)
+            VALUES ($1, 'ping', 200, $2, '{"received": true}')
+            "#,
+            inserted.id,
+            payload
+        )
+        .execute(&pool)
+        .await?;
+        println!("  ✓ Seeded organization webhook: https://hooks.vyoma.dev/events");
+    }
 
     // 3. Seed Kernel Profiles
     let kernel_specs = [

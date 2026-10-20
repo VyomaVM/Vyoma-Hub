@@ -3,6 +3,7 @@ pub mod catalog;
 pub mod config;
 pub mod error;
 pub mod notary;
+pub mod orgs;
 pub mod registry;
 pub mod routes;
 pub mod state;
