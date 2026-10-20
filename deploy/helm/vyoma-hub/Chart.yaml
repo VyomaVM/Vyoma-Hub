@@ -1,0 +1,18 @@
+apiVersion: v2
+name: vyoma-hub
+description: Production-grade, air-gapped Helm chart for deploying Vyoma Hub enterprise appliance & kernel registry
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - microvm
+  - oci-registry
+  - vyoma
+  - vmif
+  - linux-kernel
+home: https://hub.vyoma.dev
+sources:
+  - https://github.com/VyomaVM/Vyoma-Hub
+maintainers:
+  - name: Vyoma Core Engineering Team
+    email: dev@vyoma.dev

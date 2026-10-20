@@ -1,6 +1,7 @@
 pub mod handlers;
 pub mod merkle;
 pub mod models;
+pub mod scanner;
 
 use crate::state::AppState;
 use axum::{
@@ -13,8 +14,9 @@ pub fn notary_routes() -> Router<AppState> {
         // Transparency Log & Notary Attestation
         .route("/api/v1/notary/log", get(handlers::get_transparency_log))
         .route("/api/v1/notary/verify", post(handlers::verify_attestation))
-        // Vulnerability Scan Reports
+        // Vulnerability Scan Reports & Admission Policy Check
         .route("/api/v1/security/scans/:namespace/:name", get(handlers::get_security_scan))
+        .route("/api/v1/security/scans/:namespace/:name/policy-check", get(handlers::check_security_policy))
         .route("/api/v1/security/scan", post(handlers::trigger_scan))
 }
 

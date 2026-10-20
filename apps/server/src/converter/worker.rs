@@ -189,6 +189,17 @@ pub async fn execute_conversion(
 
     tx.commit().await?;
 
+    // Automatically trigger security and vulnerability scan
+    let _ = crate::notary::scanner::run_vulnerability_scan(
+        state,
+        repo_id,
+        namespace,
+        name,
+        "latest",
+        &digest_str,
+    )
+    .await;
+
     tracing::info!(
         "✓ OCI->VMIF pre-conversion completed: {} -> {} (kernel: {}, digest: {})",
         source_image,

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vyoma-hub.fullname" . }}-server
+  labels:
+    {{- include "vyoma-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "vyoma-hub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vyoma-hub.fullname" . }}-web
+  labels:
+    {{- include "vyoma-hub.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "vyoma-hub.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web

@@ -1,0 +1,134 @@
+services:
+  # 1. Unified Reverse Proxy Gateway
+  gateway:
+    image: nginx:alpine
+    container_name: vyoma-enterprise-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./enterprise/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      server:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+  # 2. Vyoma Hub Core API Engine
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    image: vyoma/hub-server:latest
+    container_name: vyoma-enterprise-server
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8080
+      DATABASE_URL: postgres://postgres:vyomapassword@postgres:5432/vyoma_hub
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: vyoma-hub-blobs
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadminpassword
+      S3_REGION: us-east-1
+      JWT_SECRET: vyoma-enterprise-super-secret-jwt-signing-key-2026-production
+      ARGON2_PEPPER: vyoma-enterprise-argon2-pepper-key-secure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  # 3. Vyoma Hub Web Management Dashboard
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    image: vyoma/hub-web:latest
+    container_name: vyoma-enterprise-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://gateway/api/v1
+    depends_on:
+      - server
+
+  # 4. Enterprise PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: vyoma-enterprise-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: vyomapassword
+      POSTGRES_DB: vyoma_hub
+    volumes:
+      - vyoma_enterprise_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vyoma_hub"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  # 5. Enterprise Redis Cache & Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: vyoma-enterprise-redis
+    restart: unless-stopped
+    volumes:
+      - vyoma_enterprise_redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  # 6. S3-Compatible Content-Addressed Blob Storage
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: vyoma-enterprise-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    command: server /data --console-address ":9001"
+    volumes:
+      - vyoma_enterprise_miniodata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 7. One-shot S3 Bucket Initializer
+  minio-init:
+    image: minio/mc:latest
+    container_name: vyoma-enterprise-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 minioadmin minioadminpassword;
+      /usr/bin/mc mb --ignore-existing local/vyoma-hub-blobs;
+      /usr/bin/mc anonymous set download local/vyoma-hub-blobs;
+      exit 0;
+      "
+
+volumes:
+  vyoma_enterprise_pgdata:
+  vyoma_enterprise_redisdata:
+  vyoma_enterprise_miniodata:

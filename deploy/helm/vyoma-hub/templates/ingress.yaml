@@ -1,0 +1,62 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "vyoma-hub.fullname" . }}
+  labels:
+    {{- include "vyoma-hub.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          # Route OCI distribution API v2 and Hub REST API to backend server
+          - path: /v2
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "vyoma-hub.fullname" $ }}-server
+                port:
+                  number: {{ $.Values.server.service.port }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "vyoma-hub.fullname" $ }}-server
+                port:
+                  number: {{ $.Values.server.service.port }}
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: {{ include "vyoma-hub.fullname" $ }}-server
+                port:
+                  number: {{ $.Values.server.service.port }}
+          # Route root and all UI pages to web frontend
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "vyoma-hub.fullname" $ }}-web
+                port:
+                  number: {{ $.Values.web.service.port }}
+    {{- end }}
+{{- end }}

@@ -478,6 +478,17 @@ pub async fn upload_appliance(
 
     tx.commit().await?;
 
+    // Automatically trigger security and vulnerability scan
+    let _ = crate::notary::scanner::run_vulnerability_scan(
+        &state,
+        repo_id,
+        &namespace,
+        &name,
+        &tag,
+        &rootfs_digest,
+    )
+    .await;
+
     Ok(Json(UploadApplianceResponse {
         status: "published".to_string(),
         repository: format!("{}/{}", namespace, name),
