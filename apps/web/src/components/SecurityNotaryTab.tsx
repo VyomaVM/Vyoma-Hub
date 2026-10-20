@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Cpu,
@@ -10,9 +10,29 @@ import {
   FileCode,
   CheckCircle2,
 } from "lucide-react";
+import { getTransparencyLog } from "@/lib/api";
 
 export const SecurityNotaryTab: React.FC = () => {
   const [activePillar, setActivePillar] = useState<number>(1);
+  const [logData, setLogData] = useState<{
+    merkle_root: string;
+    total_entries: number;
+    entries: {
+      timestamp: string;
+      target: string;
+      signer: string;
+      digest: string;
+      status: string;
+    }[];
+  }>({
+    merkle_root: "sha256:7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
+    total_entries: 4,
+    entries: [],
+  });
+
+  useEffect(() => {
+    getTransparencyLog().then(setLogData);
+  }, []);
 
   const pillars = [
     {
@@ -77,36 +97,7 @@ export const SecurityNotaryTab: React.FC = () => {
     },
   ];
 
-  const transparencyLog = [
-    {
-      timestamp: "2026-10-20 12:35:10 UTC",
-      target: "kernel:database@6.6.30-vyoma",
-      signer: "Vyoma Root Authority (239b0c...)",
-      digest: "sha256:7a8b9c0d1e2f3a4b...",
-      status: "Recorded in Merkle Tree #1042",
-    },
-    {
-      timestamp: "2026-10-20 12:35:10 UTC",
-      target: "appliance:vyoma/postgres@16",
-      signer: "Verified Publisher Notary",
-      digest: "sha256:f290d8a1c97e14f8...",
-      status: "Recorded in Merkle Tree #1041",
-    },
-    {
-      timestamp: "2026-10-20 12:35:10 UTC",
-      target: "kernel:ai-inference@6.6.30-vyoma",
-      signer: "Vyoma Root Authority (239b0c...)",
-      digest: "sha256:9c0d1e2f3a4b5c6d...",
-      status: "Recorded in Merkle Tree #1040",
-    },
-    {
-      timestamp: "2026-10-20 12:35:10 UTC",
-      target: "appliance:vyoma/ollama@latest",
-      signer: "Verified Publisher Notary",
-      digest: "sha256:b8472910fa37e204...",
-      status: "Recorded in Merkle Tree #1039",
-    },
-  ];
+  const transparencyLog = logData.entries;
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
@@ -242,12 +233,17 @@ export const SecurityNotaryTab: React.FC = () => {
               Append-Only Notary Transparency Log
             </h3>
           </div>
-          <span className="badge badge-emerald">
-            Cryptographically Immutable
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span className="badge badge-emerald">
+              Cryptographically Immutable
+            </span>
+            <div style={{ fontSize: "0.74rem", color: "var(--text-muted)" }}>
+              Root: <code className="mono" style={{ color: "var(--accent-gold)" }}>{logData.merkle_root.slice(0, 20)}...</code>
+            </div>
+          </div>
         </div>
         <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "20px" }}>
-          Every official image push, signature verification, and kernel release generates a deterministic cryptographic entry in the public Merkle tree log.
+          Every official image push, signature verification, and kernel release generates a deterministic cryptographic entry in the public Merkle tree log ({logData.total_entries || transparencyLog.length} verified entries).
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
