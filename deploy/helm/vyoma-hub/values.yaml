@@ -1,0 +1,104 @@
+# Default values for vyoma-hub.
+# This is a YAML-formatted file.
+
+global:
+  appEnv: production
+  domain: hub.vyoma.internal
+
+server:
+  replicaCount: 2
+  image:
+    repository: vyoma/hub-server
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+web:
+  replicaCount: 2
+  image:
+    repository: vyoma/hub-web
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50G"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: hub.vyoma.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: vyoma-hub-tls
+      hosts:
+        - hub.vyoma.internal
+
+# PostgreSQL Configuration
+postgresql:
+  enabled: true
+  host: "vyoma-hub-postgresql"
+  port: 5432
+  database: "vyoma_hub"
+  username: "postgres"
+  password: "vyomapassword"
+  persistence:
+    enabled: true
+    size: 50Gi
+
+# Redis Configuration
+redis:
+  enabled: true
+  host: "vyoma-hub-redis-master"
+  port: 6379
+  persistence:
+    enabled: true
+    size: 10Gi
+
+# Object Storage (MinIO or AWS S3 / Cloudflare R2)
+s3:
+  endpoint: "http://vyoma-hub-minio:9000"
+  bucket: "vyoma-hub-blobs"
+  region: "us-east-1"
+  accessKey: "minioadmin"
+  secretKey: "minioadminpassword"
+
+# Security Secrets
+secrets:
+  jwtSecret: "vyoma-k8s-enterprise-jwt-super-secret-key-32b-length"
+  argon2Pepper: "vyoma-k8s-enterprise-argon2-pepper-key"

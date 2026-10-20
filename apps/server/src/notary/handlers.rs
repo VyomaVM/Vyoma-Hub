@@ -16,8 +16,6 @@ use axum::{
 };
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::Deserialize;
-use serde_json::json;
-use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct LogQuery {
@@ -196,37 +194,93 @@ pub async fn trigger_scan(
     hasher.update(format!("{}:{}:{}", repo.namespace, repo.name, tag_name).as_bytes());
     let digest = format!("sha256:{:x}", hasher.finalize());
 
-    let scan_id = Uuid::new_v4();
-    let cve_report = json!([
-        { "cve_id": "CVE-CHECK-CLEAN", "severity": "NONE", "package": "base-rootfs", "status": "Clean" }
-    ]);
-
-    sqlx::query!(
-        r#"
-        INSERT INTO vulnerability_scans (id, repository_id, tag_name, digest, status, critical_count, high_count, medium_count, low_count, cve_report)
-        VALUES ($1, $2, $3, $4, 'clean', 0, 0, 0, 0, $5)
-        "#,
-        scan_id,
+    let scan_id = super::scanner::run_vulnerability_scan(
+        &state,
         repo.id,
-        tag_name,
-        digest,
-        cve_report
+        &repo.namespace,
+        &repo.name,
+        &tag_name,
+        &digest,
     )
-    .execute(&state.db)
+    .await?;
+
+    let row = sqlx::query!(
+        r#"
+        SELECT id, tag_name, digest, status, critical_count, high_count, medium_count, low_count, cve_report, scanned_at
+        FROM vulnerability_scans
+        WHERE id = $1
+        "#,
+        scan_id
+    )
+    .fetch_one(&state.db)
     .await?;
 
     Ok(Json(VulnerabilityScanDto {
-        id: scan_id,
+        id: row.id,
         namespace: repo.namespace,
         name: repo.name,
-        tag: tag_name,
-        digest,
-        status: "clean".to_string(),
-        critical_count: 0,
-        high_count: 0,
-        medium_count: 0,
-        low_count: 0,
-        cve_report,
-        scanned_at: chrono::Utc::now(),
+        tag: row.tag_name,
+        digest: row.digest,
+        status: row.status,
+        critical_count: row.critical_count,
+        high_count: row.high_count,
+        medium_count: row.medium_count,
+        low_count: row.low_count,
+        cve_report: row.cve_report,
+        scanned_at: row.scanned_at,
+    }))
+}
+
+// GET /api/v1/security/scans/:namespace/:name/policy-check
+pub async fn check_security_policy(
+    State(state): State<AppState>,
+    Path((namespace, name)): Path<(String, String)>,
+) -> Result<Json<super::scanner::PolicyCheckResponse>, AppError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT s.id, r.namespace, r.name, s.tag_name, s.digest, s.status,
+               s.critical_count, s.high_count, s.medium_count, s.low_count,
+               s.scanned_at
+        FROM vulnerability_scans s
+        JOIN repositories r ON r.id = s.repository_id
+        WHERE r.namespace = $1 AND r.name = $2
+        ORDER BY s.scanned_at DESC
+        LIMIT 1
+        "#,
+        namespace,
+        name
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound(format!("No scan reports found for {}/{}", namespace, name)))?;
+
+    let passed = row.critical_count == 0;
+    let admission_decision = if passed {
+        "ADMITTED: Passed zero-critical vulnerability gate".to_string()
+    } else {
+        format!("BLOCKED: Found {} critical vulnerabilities in appliance image", row.critical_count)
+    };
+
+    let reason = if passed {
+        "Compliant with enterprise zero-trust deployment policy".to_string()
+    } else {
+        "Non-compliant: Critical CVEs detected. Deployment prohibited.".to_string()
+    };
+
+    Ok(Json(super::scanner::PolicyCheckResponse {
+        namespace: row.namespace,
+        name: row.name,
+        tag: row.tag_name,
+        digest: row.digest,
+        passed,
+        status: row.status,
+        critical_count: row.critical_count,
+        high_count: row.high_count,
+        medium_count: row.medium_count,
+        low_count: row.low_count,
+        policy_enforced: "enterprise-zero-critical-cve".to_string(),
+        admission_decision,
+        reason,
+        scanned_at: row.scanned_at,
     }))
 }
