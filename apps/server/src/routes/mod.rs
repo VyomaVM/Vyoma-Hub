@@ -3,7 +3,8 @@ pub mod health;
 pub mod oci_auth;
 
 use crate::{
-    catalog::catalog_routes, notary::notary_routes, registry::registry_routes, state::AppState,
+    catalog::catalog_routes, notary::notary_routes, orgs::org_routes, registry::registry_routes,
+    state::AppState,
 };
 use axum::{
     routing::{delete, get, post},
@@ -39,6 +40,8 @@ pub fn build_router(state: AppState) -> Router {
         .merge(catalog_routes())
         // Merge Notary Transparency Log & Security Scan routes (/api/v1/notary/..., /api/v1/security/...)
         .merge(notary_routes())
+        // Merge Organization RBAC & Webhooks routes (/api/v1/orgs/..., /api/v1/webhooks/...)
+        .merge(org_routes())
         // Hub REST API v1: Auth & User Tokens
         .route("/api/v1/auth/register", post(auth::register))
         .route("/api/v1/auth/login", post(auth::login))
