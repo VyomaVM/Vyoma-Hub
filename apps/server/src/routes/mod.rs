@@ -2,7 +2,7 @@ pub mod auth;
 pub mod health;
 pub mod oci_auth;
 
-use crate::{registry::registry_routes, state::AppState};
+use crate::{catalog::catalog_routes, registry::registry_routes, state::AppState};
 use axum::{
     routing::{delete, get, post},
     Router,
@@ -33,6 +33,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/v2/token", get(oci_auth::oci_token))
         // Merge full OCI Distribution Registry routes (/v2/:namespace/:name/...)
         .merge(registry_routes(state.clone()))
+        // Merge Appliance Catalog & Kernel Catalog routes (/api/v1/catalog, /api/v1/kernels)
+        .merge(catalog_routes())
         // Hub REST API v1: Auth & User Tokens
         .route("/api/v1/auth/register", post(auth::register))
         .route("/api/v1/auth/login", post(auth::login))

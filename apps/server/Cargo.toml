@@ -10,6 +10,10 @@ authors.workspace = true
 name = "vyoma-hub-server"
 path = "src/main.rs"
 
+[[bin]]
+name = "vyoma-hub-seed"
+path = "src/bin/seed.rs"
+
 [dependencies]
 axum = { workspace = true }
 tokio = { workspace = true }
