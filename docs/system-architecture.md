@@ -150,18 +150,85 @@ A modern, responsive web application (Next.js / TypeScript / Vanilla CSS):
 
 ---
 
-## 5. Technology Stack Recommendation
+## 5. Ratified Technology Stack & Monorepo Architecture
 
-| Component | Recommended Technology | Rationale |
+The technology stack is officially ratified to maximize performance, type safety, code sharing with the Vyoma engine, and developer productivity:
+
+| Tier | Technology | Purpose & Rationale |
 |---|---|---|
-| **Frontend** | Next.js 15 (React 19, TypeScript) | Server-side rendering (SSR) for SEO, fast performance, rich ecosystem. |
-| **Styling** | Vanilla CSS / CSS Modules | Matches Vyoma's high-performance design system with zero bloated runtime. |
-| **Backend API** | Go (`gin` / `chi`) or Rust (`axum`) | Extremely high throughput, low latency for streaming gigabyte blobs. |
-| **Primary Database**| PostgreSQL 16 | Relational consistency, JSONB support for manifests, ACID transactions. |
-| **Cache & Queues** | Redis + Dragonfly | Ultra-low latency rate limiting and task queues. |
-| **Blob Storage** | Cloudflare R2 / AWS S3 | Zero egress fees on R2; high availability for large layer and kernel files. |
-| **Edge & CDN** | Cloudflare Enterprise / Workers | Global caching of read-only Squashfs layers and kernel images. |
-| **Search Engine** | Meilisearch or PostgreSQL Full-Text | Instant typo-tolerant search across appliances, tags, and kernels. |
+| **Backend API & Registry** | **Rust 1.80+ (`axum` + `tokio` + `sqlx`)** | Extreme throughput for streaming multi-gigabyte layer blobs. **Direct code sharing** with `crates/vyoma-image` (reusing `VmifManifest`, `KernelCatalog`, `SigningKeyPair`, and `TrustPolicy` without duplicate logic). |
+| **Frontend Web App** | **Next.js 15 (React 19, TypeScript)** | Server-side rendering (SSR) for appliance SEO (`hub.vyoma.dev/postgres`), client-side transitions for the Explorer, Dashboard, and Kernel Browser. |
+| **Styling** | **Vanilla CSS / CSS Modules** | Zero bloated runtime; consistent with Vyoma's sleek dark-mode aesthetic (gold/cyan neon accents, monospace metrics). |
+| **Monorepo Manager** | **`pnpm` Workspaces (v9+) + Turborepo** | Blazing-fast disk-efficient package management with isolated dependency hoisting and task orchestration (`turbo build`, `turbo dev`). |
+| **Primary Database** | **PostgreSQL 16** | Relational ACID guarantees for organizations, users, repositories, tags, and JSONB storage for appliance manifests and audit logs. |
+| **Cache & Rate Limiting** | **Redis 7** | Sub-millisecond token blacklisting, session tracking, token bucket rate limiting (preventing registry DDoS), and async task queuing. |
+| **Blob Object Storage** | **S3-Compatible (Cloudflare R2 in Prod, MinIO locally)** | Content-addressed storage for `rootfs.sqfs` layers and `kernel.vmlinuz` binaries. Zero egress fees on Cloudflare R2. |
+| **Edge & CDN** | **Cloudflare Workers / CDN** | Global edge caching of immutable Squashfs layers and kernel binaries. |
+
+---
+
+## 6. Git Strategy & Engineering Standards
+
+Vyoma Hub strictly adheres to the same proven Git Flow and engineering discipline established in the core `vyoma` engine:
+
+### 6.1 Branching Model
+
+```
+[main] ───────────────────────────●───────────────────────────● (v1.0.0 Release)
+                                 ▲                           ▲
+[develop] ──────●───────●────────┴──────────●───────●─────────┘ (Integration)
+                 ▲     ▲                     ▲     ▲
+[feat/*] ────────┴─────┘                     └─────┘ (Feature Branches)
+```
+
+1. **`main` (Production Branch)**:
+   - Always reflects production deployable state.
+   - Protected branch: direct pushes strictly prohibited.
+   - Deployments to `hub.vyoma.dev` automatically trigger from merges to `main`.
+2. **`develop` (Active Integration Branch)**:
+   - The primary integration branch where all new features, bugfixes, and refactors merge.
+   - Nightly and staging builds deploy from `develop`.
+3. **Working Branches (Off `develop`)**:
+   - `feat/<scope>-<description>`: e.g. `feat/registry-oci-v2-handlers`, `feat/web-kernel-explorer`.
+   - `fix/<scope>-<description>`: e.g. `fix/auth-token-expiration`, `fix/layer-stream-boundary`.
+   - `docs/<description>`: e.g. `docs/api-token-specification`.
+   - `refactor/<description>`: e.g. `refactor/s3-blob-store-client`.
+   - `chore/<description>`: e.g. `chore/upgrade-pnpm-dependencies`.
+
+### 6.2 Commit Message Standards (Conventional Commits)
+
+All commits across both frontend and backend must strictly adhere to the Conventional Commits specification:
+
+```
+<type>(<scope>): <short imperative summary>
+
+[optional body explaining rationale and non-obvious context]
+
+[optional footer, e.g. Closes #12]
+```
+
+* **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`.
+* **Scopes**: `server`, `web`, `registry`, `auth`, `notary`, `kernel`, `db`, `infra`.
+* **Examples**:
+  - `feat(registry): implement OCI v2 manifest negotiation and digest verification`
+  - `feat(web): add interactive kernel profile comparison matrix`
+  - `fix(auth): handle expired bearer tokens gracefully with 401 challenge`
+  - `chore(deps): update pnpm workspace dependencies and axum to 0.7.7`
+
+### 6.3 Monorepo Quality Gates (CI/CD Pipeline)
+
+Every Pull Request targeting `develop` must pass the automated CI quality checks:
+1. **Frontend Gate (`apps/web`)**:
+   - `pnpm --filter web check` (TypeScript type check)
+   - `pnpm --filter web lint` (ESLint & code style)
+   - `pnpm --filter web build` (Next.js production build verification)
+2. **Backend Gate (`apps/server`)**:
+   - `cargo check --all-targets` (Rust compilation)
+   - `cargo test --all` (Comprehensive unit & integration tests)
+   - `cargo clippy --all-targets -- -D warnings` (Zero linter warnings allowed)
+   - `cargo fmt -- --check` (Formatting verification)
+3. **Database Migration Gate**:
+   - `sqlx migrate run` verified against local test PostgreSQL instance.
 
 ---
 

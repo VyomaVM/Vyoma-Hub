@@ -14,14 +14,27 @@ Complete technical blueprints and design documents:
 
 ---
 
+## 🛠️ Ratified Technology Stack
+
+| Layer | Technology | Key Dependencies & Rationale |
+|---|---|---|
+| **Backend API & Registry** | **Rust 1.80+** | `axum` 0.7, `tokio`, `sqlx`, `tower-http`. Direct code sharing with `crates/vyoma-image` (reusing `VmifManifest`, `KernelCatalog`, `SigningKeyPair`, `TrustPolicy`). |
+| **Frontend Web App** | **Next.js 15 (React 19)** | TypeScript, App Router, SSR for appliance SEO, Vanilla CSS / CSS Modules. |
+| **Monorepo Manager** | **`pnpm` Workspaces (v9+)** | Turborepo (`turbo.json`) task orchestration and dependency isolation. |
+| **Primary Database** | **PostgreSQL 16** | Relational ACID guarantees for orgs/users/repos, JSONB storage for manifests. |
+| **Cache & Queues** | **Redis 7** | Token rate limiting, session cache, async task queuing. |
+| **Blob Storage** | **S3-Compatible** | Cloudflare R2 in production (zero egress fees), MinIO locally. |
+
+---
+
 ## 📦 Monorepo Structure
 
 ```
 Vyoma-Hub/
 ├── apps/
-│   ├── web/              # Frontend web application (Next.js / TypeScript / React)
+│   ├── web/              # Frontend web application (Next.js 15 / TypeScript / React 19)
 │   │                     # Appliance Explorer, Kernel Catalog, Org Dashboard, Scorecards
-│   └── server/           # Backend API & Registry Service
+│   └── server/           # Backend API & Registry Service (Rust / Axum)
 │                         # OCI v2 distribution, VMIF endpoints, Auth, Notary signer
 ├── packages/
 │   ├── types/            # Shared TypeScript / JSON schema definitions
@@ -29,8 +42,31 @@ Vyoma-Hub/
 ├── docker/
 │   └── docker-compose.yml # Local development stack (PostgreSQL 16, Redis, MinIO S3)
 ├── docs/                 # Architectural specifications and API documentation
+├── pnpm-workspace.yaml   # pnpm workspace definition
+├── package.json          # Monorepo root scripts
+├── turbo.json            # Turborepo task pipeline
 └── README.md
 ```
+
+---
+
+## 🌿 Git Strategy & Engineering Workflow
+
+Vyoma Hub strictly adheres to the Git strategy established across the Vyoma ecosystem:
+
+- **Primary Branches**:
+  - `main`: Production release branch. Protected. Zero direct commits. Deploys to `hub.vyoma.dev`.
+  - `develop`: Primary integration branch. All feature branches merge here first.
+- **Working Branches**:
+  - `feat/<scope>-<description>` (e.g. `feat/registry-oci-v2-handlers`)
+  - `fix/<scope>-<description>` (e.g. `fix/auth-token-expiration`)
+  - `docs/<description>` (e.g. `docs/api-token-specification`)
+  - `chore/<description>` (e.g. `chore/upgrade-pnpm-dependencies`)
+- **Commit Standards**:
+  - Strict Conventional Commits: `<type>(<scope>): <summary>` (e.g. `feat(server): implement OCI v2 manifest negotiation`).
+- **CI/CD Quality Gates**:
+  - Backend: `cargo check`, `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt -- --check`.
+  - Frontend: `pnpm --filter web check`, `pnpm --filter web lint`, `pnpm --filter web build`.
 
 ---
 
