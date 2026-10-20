@@ -63,3 +63,26 @@ pub struct WebhookDeliveryDto {
     pub response_body: Option<String>,
     pub delivered_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct AuditLogDto {
+    pub id: Uuid,
+    pub org_id: Option<Uuid>,
+    pub actor_id: Option<Uuid>,
+    pub actor_username: String,
+    pub action: String,
+    pub target_type: String,
+    pub target_id: Option<String>,
+    pub details: Option<serde_json::Value>,
+    pub ip_address: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAuditLogRequest {
+    pub action: String,
+    pub target_type: String,
+    pub target_id: Option<String>,
+    pub details: Option<serde_json::Value>,
+}
+

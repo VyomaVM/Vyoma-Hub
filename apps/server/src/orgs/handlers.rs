@@ -2,8 +2,8 @@ use crate::{
     auth::extractor::MaybeAuthUser,
     error::AppError,
     orgs::models::{
-        AddMemberRequest, CreateOrgRequest, CreateWebhookRequest, OrgMemberDto, OrganizationDto,
-        WebhookDeliveryDto, WebhookDto,
+        AddMemberRequest, AuditLogDto, CreateAuditLogRequest, CreateOrgRequest,
+        CreateWebhookRequest, OrgMemberDto, OrganizationDto, WebhookDeliveryDto, WebhookDto,
     },
     state::AppState,
 };
@@ -389,4 +389,62 @@ pub async fn list_deliveries_with_org(
 fn md5_or_uuid() -> Uuid {
     Uuid::new_v4()
 }
+
+// GET /api/v1/orgs/:name/audit-logs
+pub async fn list_audit_logs(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Vec<AuditLogDto>>, AppError> {
+    let org = sqlx::query!("SELECT id FROM organizations WHERE name = $1", name.to_lowercase())
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Organization {} not found", name)))?;
+
+    let rows = sqlx::query_as!(
+        AuditLogDto,
+        r#"
+        SELECT id, org_id, actor_id, actor_username, action, target_type, target_id, details, ip_address, created_at
+        FROM audit_logs
+        WHERE org_id = $1
+        ORDER BY created_at DESC
+        LIMIT 50
+        "#,
+        org.id
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(rows))
+}
+
+// POST /api/v1/orgs/:name/audit-logs
+pub async fn record_audit_log(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(payload): Json<CreateAuditLogRequest>,
+) -> Result<Json<AuditLogDto>, AppError> {
+    let org = sqlx::query!("SELECT id FROM organizations WHERE name = $1", name.to_lowercase())
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Organization {} not found", name)))?;
+
+    let row = sqlx::query_as!(
+        AuditLogDto,
+        r#"
+        INSERT INTO audit_logs (org_id, actor_username, action, target_type, target_id, details, ip_address)
+        VALUES ($1, 'system', $2, $3, $4, $5, '127.0.0.1')
+        RETURNING id, org_id, actor_id, actor_username, action, target_type, target_id, details, ip_address, created_at
+        "#,
+        org.id,
+        payload.action,
+        payload.target_type,
+        payload.target_id.as_deref(),
+        payload.details
+    )
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(row))
+}
+
 
