@@ -1,7 +1,9 @@
 pub mod auth;
 pub mod catalog;
 pub mod config;
+pub mod converter;
 pub mod error;
+pub mod marketplace;
 pub mod notary;
 pub mod orgs;
 pub mod registry;

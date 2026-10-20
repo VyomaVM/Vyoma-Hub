@@ -20,6 +20,8 @@ pub fn org_routes() -> Router<AppState> {
         .route("/api/v1/orgs/:name/webhooks/:id/deliveries", get(handlers::list_deliveries_with_org))
         .route("/api/v1/webhooks/:id/test", post(handlers::test_webhook))
         .route("/api/v1/webhooks/:id/deliveries", get(handlers::list_deliveries))
+        // Enterprise Security Audit Logs
+        .route("/api/v1/orgs/:name/audit-logs", get(handlers::list_audit_logs).post(handlers::record_audit_log))
 }
 
 #[cfg(test)]
