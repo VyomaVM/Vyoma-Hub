@@ -1,6 +1,7 @@
 use ed25519_dalek::{Signer, SigningKey};
 use rand::rngs::OsRng;
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use sqlx::postgres::PgPoolOptions;
 use std::env;
 
@@ -238,9 +239,65 @@ async fn main() -> Result<(), anyhow::Error> {
             .await?;
         }
 
-        println!("  ✓ Seeded official appliance: vyoma/{}", name);
+        // Insert initial transparency log entry for appliance
+        let mut leaf_hasher = Sha256::new();
+        leaf_hasher.update(format!("appliance:vyoma/{}:{}", name, manifest_digest).as_bytes());
+        let leaf_hash = format!("sha256:{:x}", leaf_hasher.finalize());
+        sqlx::query!(
+            r#"
+            INSERT INTO transparency_logs (target_type, target_name, version, digest, signature, public_key, leaf_hash)
+            VALUES ('appliance', $1, 'latest', $2, $3, $4, $5)
+            "#,
+            format!("vyoma/{}", name),
+            manifest_digest,
+            format!("sig:appliance:{}", name),
+            notary_pubkey,
+            leaf_hash
+        )
+        .execute(&pool)
+        .await?;
+
+        // Seed clean vulnerability scan record
+        let scan_cve = json!([
+            { "cve_id": "CVE-CHECK-CLEAN", "severity": "NONE", "package": "base-rootfs", "status": "Clean (0 Critical, 0 High)" }
+        ]);
+        sqlx::query!(
+            r#"
+            INSERT INTO vulnerability_scans (repository_id, tag_name, digest, status, critical_count, high_count, medium_count, low_count, cve_report)
+            VALUES ($1, 'latest', $2, 'clean', 0, 0, 0, 0, $3)
+            "#,
+            repo_id,
+            manifest_digest,
+            scan_cve
+        )
+        .execute(&pool)
+        .await?;
+
+        println!("  ✓ Seeded official appliance: vyoma/{} (with Notary Attestation & CVE Scorecard)", name);
     }
 
-    println!("✨ Seed completed successfully! Vyoma Hub is fully provisioned.");
+    // Also seed transparency log entries for certified kernels
+    for (name, version, _, vmlinuz_digest, _, _, _) in kernel_specs {
+        let mut leaf_hasher = Sha256::new();
+        leaf_hasher.update(format!("kernel:{}:{}", name, vmlinuz_digest).as_bytes());
+        let leaf_hash = format!("sha256:{:x}", leaf_hasher.finalize());
+        sqlx::query!(
+            r#"
+            INSERT INTO transparency_logs (target_type, target_name, version, digest, signature, public_key, leaf_hash)
+            VALUES ('kernel', $1, $2, $3, $4, $5, $6)
+            "#,
+            name,
+            version,
+            vmlinuz_digest,
+            format!("sig:kernel:{}", name),
+            notary_pubkey,
+            leaf_hash
+        )
+        .execute(&pool)
+        .await?;
+    }
+    println!("  ✓ Seeded Merkle Transparency Log entries for certified kernels");
+
+    println!("✨ Seed completed successfully! Vyoma Hub is fully provisioned with Notary logs & Security scans.");
     Ok(())
 }

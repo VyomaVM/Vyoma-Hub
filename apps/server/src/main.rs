@@ -2,6 +2,7 @@ pub mod auth;
 pub mod catalog;
 pub mod config;
 pub mod error;
+pub mod notary;
 pub mod registry;
 pub mod routes;
 pub mod state;

@@ -46,3 +46,22 @@ export interface UserToken {
   created_at: string;
   last_used_at?: string | null;
 }
+
+export interface TransparencyLogItem {
+  id: string;
+  sequence_number: number;
+  target_type: string;
+  target_name: string;
+  version: string;
+  digest: string;
+  signature: string;
+  public_key: string;
+  leaf_hash: string;
+  created_at: string;
+}
+
+export interface TransparencyLogData {
+  merkle_root: string;
+  total_entries: number;
+  entries: TransparencyLogItem[];
+}
