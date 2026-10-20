@@ -16,7 +16,10 @@ pub fn org_routes() -> Router<AppState> {
         .route("/api/v1/orgs/:name/members", get(handlers::list_members).post(handlers::add_member))
         // Webhooks
         .route("/api/v1/orgs/:name/webhooks", get(handlers::list_webhooks).post(handlers::create_webhook))
+        .route("/api/v1/orgs/:name/webhooks/:id/test", post(handlers::test_webhook_with_org))
+        .route("/api/v1/orgs/:name/webhooks/:id/deliveries", get(handlers::list_deliveries_with_org))
         .route("/api/v1/webhooks/:id/test", post(handlers::test_webhook))
+        .route("/api/v1/webhooks/:id/deliveries", get(handlers::list_deliveries))
 }
 
 #[cfg(test)]

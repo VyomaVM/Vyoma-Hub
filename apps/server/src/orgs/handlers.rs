@@ -348,6 +348,45 @@ pub async fn test_webhook(
     }))
 }
 
+// GET /api/v1/webhooks/:id/deliveries
+pub async fn list_deliveries(
+    State(state): State<AppState>,
+    Path(webhook_id): Path<Uuid>,
+) -> Result<Json<Vec<WebhookDeliveryDto>>, AppError> {
+    let rows = sqlx::query_as!(
+        WebhookDeliveryDto,
+        r#"
+        SELECT id, webhook_id, event_type, status_code, request_payload, response_body, delivered_at
+        FROM webhook_deliveries
+        WHERE webhook_id = $1
+        ORDER BY delivered_at DESC
+        LIMIT 20
+        "#,
+        webhook_id
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(rows))
+}
+
+// POST /api/v1/orgs/:name/webhooks/:id/test
+pub async fn test_webhook_with_org(
+    State(state): State<AppState>,
+    Path((_org_name, webhook_id)): Path<(String, Uuid)>,
+) -> Result<Json<WebhookDeliveryDto>, AppError> {
+    test_webhook(State(state), Path(webhook_id)).await
+}
+
+// GET /api/v1/orgs/:name/webhooks/:id/deliveries
+pub async fn list_deliveries_with_org(
+    State(state): State<AppState>,
+    Path((_org_name, webhook_id)): Path<(String, Uuid)>,
+) -> Result<Json<Vec<WebhookDeliveryDto>>, AppError> {
+    list_deliveries(State(state), Path(webhook_id)).await
+}
+
 fn md5_or_uuid() -> Uuid {
     Uuid::new_v4()
 }
+

@@ -53,7 +53,7 @@ pub struct CreateWebhookRequest {
     pub events: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct WebhookDeliveryDto {
     pub id: Uuid,
     pub webhook_id: Uuid,
